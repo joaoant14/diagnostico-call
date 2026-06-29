@@ -259,6 +259,11 @@ body{
     <p>São poucos horários nos próximos dias. Garante o teu.</p>
   </div>
   <div id="calendlyContainer" class="calendly-inline-widget" style="min-width:320px;height:700px;"></div>
+  <p style="text-align:center;margin-top:14px;font-size:13px;color:var(--muted)">
+    O calendário não carregou?
+    <a id="calendlyFallback" href="#" target="_blank" rel="noopener"
+       style="color:var(--accent);text-decoration:underline">Abrir agenda em nova aba</a>
+  </p>
 </div>
 
 <!-- ===================== VÍDEO ===================== -->
@@ -442,15 +447,21 @@ function postLead(){
 }
 
 /* ===================== CALENDLY ===================== */
-function buildResumo(){
-  return [
+function buildCalendlyUrl(){
+  const resumo = [
     `Instagram: ${answers.instagram||"-"}`,
     `Telefone: ${answers.telefone||"-"}`,
     `Faturamento: ${answers.faturamento||"-"}`,
     `Objetivo: ${answers.objetivo||"-"}`,
     `Vende hoje?: ${answers.vende_hoje||"-"}`,
-    `Maior frustração: ${answers.frustracao||"-"}`
-  ].join("\n");
+    `Frustracao: ${answers.frustracao||"-"}`
+  ].join(" | ");
+  const p = new URLSearchParams({
+    name: answers.nome || "",
+    email: answers.email || "",
+    a1: resumo
+  });
+  return CALENDLY_URL + "?" + p.toString();
 }
 
 function showCalendar(){
@@ -461,18 +472,15 @@ function showCalendar(){
 
   postLead();
 
-  // injeta o Calendly já com os dados do lead pré-preenchidos
+  const url = buildCalendlyUrl();
+  const container = document.getElementById("calendlyContainer");
+  const fb = document.getElementById("calendlyFallback");
+  if(fb) fb.href = url;
+
   const start = ()=>{
     if(!(window.Calendly && Calendly.initInlineWidget)){ setTimeout(start,150); return; }
-    Calendly.initInlineWidget({
-      url: CALENDLY_URL,
-      parentElement: document.getElementById("calendlyContainer"),
-      prefill: {
-        name: answers.nome || "",
-        email: answers.email || "",
-        customAnswers: { a1: buildResumo() }  // cai na pergunta padrão do Calendly
-      }
-    });
+    container.innerHTML = "";
+    Calendly.initInlineWidget({ url: url, parentElement: container });
   };
   start();
   window.scrollTo({top:0, behavior:"smooth"});
