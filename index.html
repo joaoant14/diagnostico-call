@@ -5,10 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Inteligência Persuasiva — Diagnóstico</title>
 
-<!-- Calendly -->
-<link href="https://assets.calendly.com/assets/external/widget.css" rel="stylesheet">
-<script src="https://assets.calendly.com/assets/external/widget.js" async></script>
-
 <!-- Fontes -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -203,8 +199,8 @@ body{
   min-height:18px;
 }
 
-/* ---------- calendly + video screens ---------- */
-#calendarScreen,#videoScreen{
+/* ---------- final screen (vídeo + agendar) ---------- */
+#finalScreen{
   display:none;
   width:100%;
   max-width:760px;
@@ -220,10 +216,6 @@ body{
   font-size:clamp(22px,4.5vw,30px);line-height:1.2;
 }
 .screen-head p{color:var(--muted);margin-top:10px;font-size:15px}
-
-.calendly-inline-widget{
-  border-radius:16px;overflow:hidden;border:1px solid var(--border);
-}
 
 /* video */
 .video-wrap{
@@ -251,26 +243,11 @@ body{
 <!-- ===================== QUIZ ===================== -->
 <div class="stage" id="stage"></div>
 
-<!-- ===================== CALENDLY ===================== -->
-<div id="calendarScreen">
+<!-- ===================== VÍDEO + AGENDAR ===================== -->
+<div id="finalScreen">
   <div class="screen-head">
-    <div class="eyebrow">ÚLTIMO PASSO</div>
-    <h2>Escolhe o melhor horário pra gente conversar</h2>
-    <p>São poucos horários nos próximos dias. Garante o teu.</p>
-  </div>
-  <div id="calendlyContainer" class="calendly-inline-widget" style="min-width:320px;height:700px;"></div>
-  <p style="text-align:center;margin-top:14px;font-size:13px;color:var(--muted)">
-    O calendário não carregou?
-    <a id="calendlyFallback" href="#" target="_blank" rel="noopener"
-       style="color:var(--accent);text-decoration:underline">Abrir agenda em nova aba</a>
-  </p>
-</div>
-
-<!-- ===================== VÍDEO ===================== -->
-<div id="videoScreen">
-  <div class="screen-head">
-    <div class="eyebrow">AGENDAMENTO CONFIRMADO ✓</div>
-    <h2>Assiste isso antes da nossa call</h2>
+    <div class="eyebrow">FALTA SÓ UM PASSO</div>
+    <h2>Assiste esse vídeo rápido e agenda tua call</h2>
     <p>2 minutos que vão fazer a nossa conversa render muito mais.</p>
   </div>
   <div class="video-wrap">
@@ -279,6 +256,11 @@ body{
       title="Vídeo"
       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
       allowfullscreen></iframe>
+  </div>
+  <div style="text-align:center;margin-top:28px">
+    <a id="agendarBtn" href="#" class="cta" style="text-decoration:none">
+      Agendar minha call →
+    </a>
   </div>
 </div>
 
@@ -446,7 +428,7 @@ function postLead(){
   }catch(e){}
 }
 
-/* ===================== CALENDLY ===================== */
+/* ===================== AGENDA (link direto, sem embed) ===================== */
 function buildCalendlyUrl(){
   const resumo = [
     `Instagram: ${answers.instagram||"-"}`,
@@ -467,33 +449,19 @@ function buildCalendlyUrl(){
 function showCalendar(){
   stage.style.display = "none";
   progressEl.style.display = "none";
-  const screen = document.getElementById("calendarScreen");
-  screen.style.display = "block";
+  document.getElementById("finalScreen").style.display = "block";
 
   postLead();
 
-  const url = buildCalendlyUrl();
-  const container = document.getElementById("calendlyContainer");
-  const fb = document.getElementById("calendlyFallback");
-  if(fb) fb.href = url;
+  const btn = document.getElementById("agendarBtn");
+  btn.href = buildCalendlyUrl();
+  btn.addEventListener("click", function(){
+    // hook p/ pixel: aqui é o evento de intenção de agendamento
+    // if(window.fbq) fbq('track','Schedule');
+  });
 
-  const start = ()=>{
-    if(!(window.Calendly && Calendly.initInlineWidget)){ setTimeout(start,150); return; }
-    container.innerHTML = "";
-    Calendly.initInlineWidget({ url: url, parentElement: container });
-  };
-  start();
   window.scrollTo({top:0, behavior:"smooth"});
 }
-
-/* ===================== VÍDEO APÓS AGENDAR ===================== */
-window.addEventListener("message", function(e){
-  if(e.data && e.data.event === "calendly.event_scheduled"){
-    document.getElementById("calendarScreen").style.display = "none";
-    document.getElementById("videoScreen").style.display = "block";
-    window.scrollTo({top:0, behavior:"smooth"});
-  }
-});
 
 /* start */
 render();
