@@ -199,35 +199,6 @@ body{
   min-height:18px;
 }
 
-/* ---------- final screen (vídeo + agendar) ---------- */
-#finalScreen{
-  display:none;
-  width:100%;
-  max-width:760px;
-  animation:enter .5s var(--snap) both;
-}
-.screen-head{text-align:center;margin-bottom:24px}
-.screen-head .eyebrow{
-  font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:600;
-  letter-spacing:.1em;color:var(--accent);margin-bottom:10px;
-}
-.screen-head h2{
-  font-family:'Space Grotesk',sans-serif;font-weight:600;
-  font-size:clamp(22px,4.5vw,30px);line-height:1.2;
-}
-.screen-head p{color:var(--muted);margin-top:10px;font-size:15px}
-
-/* video */
-.video-wrap{
-  position:relative;height:78vh;aspect-ratio:9/16;max-width:100%;
-  margin:0 auto;
-  border-radius:16px;overflow:hidden;border:1px solid var(--border);
-  background:#000;
-}
-.video-wrap video,.video-wrap iframe{
-  display:block;width:100%;height:100%;object-fit:contain;border:none;
-}
-
 @media (prefers-reduced-motion: reduce){
   *{animation:none !important;transition:none !important}
   .seg i{transition:none}
@@ -242,27 +213,6 @@ body{
 
 <!-- ===================== QUIZ ===================== -->
 <div class="stage" id="stage"></div>
-
-<!-- ===================== VÍDEO + AGENDAR ===================== -->
-<div id="finalScreen">
-  <div class="screen-head">
-    <div class="eyebrow">FALTA SÓ UM PASSO</div>
-    <h2>Assiste esse vídeo rápido e agenda tua call</h2>
-    <p>2 minutos que vão fazer a nossa conversa render muito mais.</p>
-  </div>
-  <div class="video-wrap">
-    <iframe
-      src="https://www.youtube.com/embed/ZH2Nr1HgrNU?rel=0&playsinline=1"
-      title="Vídeo"
-      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-      allowfullscreen></iframe>
-  </div>
-  <div style="text-align:center;margin-top:28px">
-    <a id="agendarBtn" href="#" class="cta" style="text-decoration:none">
-      Agendar minha call →
-    </a>
-  </div>
-</div>
 
 <script>
 /* ===================== CONFIG ===================== */
@@ -354,6 +304,8 @@ function render(){
   let html = `<div class="eyebrow">${Q.eyebrow}</div><h2>${Q.q}</h2>`;
   if (Q.hint) html += `<div class="hint">${Q.hint}</div>`;
 
+  const isLast = (idx === QUESTIONS.length - 1);
+
   if (Q.type === "text"){
     html += `
       <div class="field">
@@ -361,7 +313,7 @@ function render(){
                value="${answers[Q.key]||""}" autocomplete="on">
       </div>
       <div class="err" id="err"></div>
-      <button class="cta" id="next">Continuar →</button>`;
+      <button class="cta" id="next">${isLast ? "Agendar minha call →" : "Continuar →"}</button>`;
   } else {
     html += `<div class="opts">` +
       Q.options.map((o,i)=>`
@@ -369,6 +321,8 @@ function render(){
           <span class="dot"></span><span>${o}</span>
         </button>`).join("") +
       `</div><div class="err" id="err"></div>`;
+    if (isLast)
+      html += `<button class="cta" id="agendarBtn" ${answers[Q.key]?'':'disabled'}>Agendar minha call →</button>`;
   }
 
   wrap.innerHTML = html;
@@ -378,6 +332,19 @@ function render(){
   if (Q.type === "text"){
     const inp = document.getElementById("inp");
     inp.focus();
+    if (Q.inputType === "tel"){
+      inp.addEventListener("input", function(){
+        let d = inp.value.replace(/\D/g,"").slice(0,11);
+        let out = d;
+        if (d.length > 2 && d.length <= 6)
+          out = `(${d.slice(0,2)}) ${d.slice(2)}`;
+        else if (d.length > 6 && d.length <= 10)
+          out = `(${d.slice(0,2)}) ${d.slice(2,6)}-${d.slice(6)}`;
+        else if (d.length > 10)
+          out = `(${d.slice(0,2)}) ${d.slice(2,7)}-${d.slice(7)}`;
+        inp.value = out;
+      });
+    }
     document.getElementById("next").onclick = ()=>submitText(Q,inp);
     inp.onkeydown = e=>{ if(e.key==="Enter") submitText(Q,inp); };
   } else {
@@ -386,9 +353,18 @@ function render(){
         stage.querySelectorAll(".opt").forEach(b=>b.classList.remove("sel"));
         btn.classList.add("sel");
         answers[Q.key] = btn.dataset.val;
-        setTimeout(advance, 260); // deixa a seleção aparecer antes de avançar
+        if (isLast){
+          const ag = document.getElementById("agendarBtn");
+          if (ag) ag.disabled = false;
+        } else {
+          setTimeout(advance, 260); // deixa a seleção aparecer antes de avançar
+        }
       };
     });
+    if (isLast){
+      const ag = document.getElementById("agendarBtn");
+      if (ag) ag.onclick = ()=>{ if(answers[Q.key]) finish(); };
+    }
   }
 }
 
@@ -400,8 +376,15 @@ function submitText(Q, inp){
   if(Q.inputType==="email" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)){
     err.textContent = "Esse email não parece certo. Confere?"; inp.focus(); return;
   }
+  if(Q.inputType==="tel"){
+    const digitos = v.replace(/\D/g,"");
+    if(digitos.length < 10){
+      err.textContent = "Coloca o telefone com DDD (ex: 11 99999-9999)."; inp.focus(); return;
+    }
+  }
   answers[Q.key] = v;
-  advance();
+  if (idx === QUESTIONS.length - 1) finish();
+  else advance();
 }
 
 /* ===================== AVANÇAR ===================== */
@@ -410,8 +393,7 @@ function advance(){
   if(idx < QUESTIONS.length){
     render();
   } else {
-    updateProgress();
-    showCalendar();
+    finish();
   }
 }
 
@@ -446,21 +428,12 @@ function buildCalendlyUrl(){
   return CALENDLY_URL + "?" + p.toString();
 }
 
-function showCalendar(){
-  stage.style.display = "none";
-  progressEl.style.display = "none";
-  document.getElementById("finalScreen").style.display = "block";
-
+function finish(){
+  updateProgress();
   postLead();
-
-  const btn = document.getElementById("agendarBtn");
-  btn.href = buildCalendlyUrl();
-  btn.addEventListener("click", function(){
-    // hook p/ pixel: aqui é o evento de intenção de agendamento
-    // if(window.fbq) fbq('track','Schedule');
-  });
-
-  window.scrollTo({top:0, behavior:"smooth"});
+  // hook p/ pixel: evento de intenção de agendamento
+  // if(window.fbq) fbq('track','Schedule');
+  window.location.href = buildCalendlyUrl();
 }
 
 /* start */
